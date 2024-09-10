@@ -6,7 +6,7 @@
 #include "AudioTools.h"
 #include "AudioLibs/AudioRealFFT.h"
 #include "AudioLibs/A2DPStream.h"
-#include "BluetoothA2DPSink.h"
+#include "AudioCodecs/CodecOpus.h"
 
 #define LED_PIN 5
 #define COLOR_ORDER RGB
@@ -41,10 +41,10 @@ auto &serial = Serial2;
 AudioInfo info;
 Throttle throttle(serial);
 
-//APTXEncoder flac_encoder;
+OpusAudioEncoder flac_encoder;
 
-//EncodedAudioStream encoder(&flac_encoder);
-StreamCopy copier(throttle,a2dp_stream);
+EncodedAudioStream encoder(&throttle,&flac_encoder);
+//StreamCopy copier(serial,a2dp_stream);
 
 DEFINE_GRADIENT_PALETTE(blue_to_green_to_white_p){
   0, 255, 0, 0,   /* at index 0,   black(0,0,0) */
@@ -72,30 +72,27 @@ void setup() {
   tcfg.callback = &fftResult;
   fft.begin(tcfg);
 
-  /*info.bits_per_sample=tcfg.bits_per_sample;
-  info.sample_rate=tcfg.sample_rate;
+  info.bits_per_sample=tcfg.bits_per_sample;
+  info.sample_rate=48000;
   info.channels=tcfg.channels;
   auto enc_cfg = encoder.defaultConfig();
-  enc_cfg.copyFrom(info);
+  enc_cfg.setAudioInfo(info);
+  encoder.begin(enc_cfg);
 
-  Serial.print("starting Gazebo LED...");
-  a2dp_sink.set_auto_reconnect(false);
-  a2dp_sink.start("Gazebo LED");
-  encoder.begin();*/
+  //Serial.print("starting Gazebo LED...");
+  //a2dp_sink.set_auto_reconnect(false);
+  //a2dp_sink.start("Gazebo LED");
   Serial.print("starting Gazebo LED...");
   a2dp_stream.begin(cfg);
 
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   a2dp_stream.sink().set_stream_reader(writeDataStream, false);
-  copier.begin();
-  copier0.begin();
+  //copier.begin();
   // Start Bluetooth Audio Receiver
 }
 
 void loop() {
 
-  copier.copy();
-  copier0.copy();
   EVERY_N_SECONDS(5) {
     nextPattern();
   }
@@ -153,8 +150,9 @@ tVal map_value(std::pair<tVal, tVal> a, std::pair<tVal, tVal> b, tVal inVal) {
 
 void writeDataStream(const uint8_t *data, uint32_t length) {
   fft.write(data, length);
+  //copier.copyBytes(length);
   //rstream.write(data, length);
-  //encoder.write(data, length);
+  encoder.write(data, length);
   //copier.copy();
   //conv.readBytes(data, length);
 }
