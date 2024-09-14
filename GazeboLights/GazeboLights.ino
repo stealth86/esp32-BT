@@ -6,7 +6,7 @@
 #include "AudioTools.h"
 #include "AudioLibs/AudioRealFFT.h"
 #include "AudioLibs/A2DPStream.h"
-#include "AudioCodecs/CodecOpus.h"
+#include "AudioCodecs/CodecMP3LAME.h"
 
 #define LED_PIN 5
 #define COLOR_ORDER RGB
@@ -16,35 +16,35 @@
 #define NUM_LEDS_WEST 84
 #define NUM_LEDS_NORTH 104
 #define NUM_LEDS 376
-#define FRAMES_PER_SECOND 60
 #define MAX_MAGNITUDE 44100
 #define TOTAL_GRADS 3
 #define RXD2 16
 #define TXD2 17
 
-A2DPStream a2dp_stream;
 AudioRealFFT fft;
 CRGB source1[NUM_LEDS];
 CRGB source2[NUM_LEDS];
 CRGB leds[NUM_LEDS];
 float magnitude;
 bool useSource1 = false;
+bool nextFileAvailable = false;
 uint8_t blendAmount = 0;
 uint8_t patternCounter = 0;
 uint8_t source1Pattern = 0;
 uint8_t source2Pattern = 1;
+uint16_t filenumber = 0;
+uint16_t filenumber_read = 0;
 std::pair<float, float> input(0, MAX_MAGNITUDE);
 std::pair<float, float> palette_lookup(0, 255);
 
 auto &serial = Serial2;
 
-AudioInfo info;
-Throttle throttle(serial);
-
-OpusAudioEncoder flac_encoder;
-
-EncodedAudioStream encoder(&throttle,&flac_encoder);
-//StreamCopy copier(serial,a2dp_stream);
+AudioInfo info(44100, 2, 16);
+A2DPStream a2dp_stream;
+MP3EncoderLAME enc;
+EncodedAudioStream enc_stream(&serial, &enc);
+Throttle throttle(enc_stream);
+static int frame_size = 512;
 
 DEFINE_GRADIENT_PALETTE(blue_to_green_to_white_p){
   0, 255, 0, 0,   /* at index 0,   black(0,0,0) */
@@ -57,12 +57,10 @@ CRGBPalette16 gPal[3] = { blue_to_green_to_white_p, HeatColors_p, OceanColors_p 
 void setup() {
 
   Serial.begin(115200);
-  AudioLogger::instance().begin(Serial, AudioLogger::Info);
-  // Setup FFT
-  Serial2.begin(115200, SERIAL_8N1,RXD2,TXD2);
-
-  auto cfg=a2dp_stream.defaultConfig(RX_MODE);
-  cfg.name="Gazebo LED";
+  //AudioLogger::instance().begin(Serial, AudioLogger::Info);
+  Serial2.begin(1100000, SERIAL_8N1, RXD2, TXD2);
+  auto cfg = a2dp_stream.defaultConfig(RX_MODE);
+  cfg.name = "Gazebo LED";
 
   auto tcfg = fft.defaultConfig();
   tcfg.length = 1024;
@@ -72,23 +70,14 @@ void setup() {
   tcfg.callback = &fftResult;
   fft.begin(tcfg);
 
-  info.bits_per_sample=tcfg.bits_per_sample;
-  info.sample_rate=48000;
-  info.channels=tcfg.channels;
-  auto enc_cfg = encoder.defaultConfig();
-  enc_cfg.setAudioInfo(info);
-  encoder.begin(enc_cfg);
-
-  //Serial.print("starting Gazebo LED...");
-  //a2dp_sink.set_auto_reconnect(false);
-  //a2dp_sink.start("Gazebo LED");
   Serial.print("starting Gazebo LED...");
   a2dp_stream.begin(cfg);
 
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   a2dp_stream.sink().set_stream_reader(writeDataStream, false);
-  //copier.begin();
-  // Start Bluetooth Audio Receiver
+  throttle.begin(info);
+  //enc_stream.setFrameSize(frame_size);
+  enc_stream.begin(info);
 }
 
 void loop() {
@@ -150,11 +139,8 @@ tVal map_value(std::pair<tVal, tVal> a, std::pair<tVal, tVal> b, tVal inVal) {
 
 void writeDataStream(const uint8_t *data, uint32_t length) {
   fft.write(data, length);
-  //copier.copyBytes(length);
-  //rstream.write(data, length);
-  encoder.write(data, length);
-  //copier.copy();
-  //conv.readBytes(data, length);
+  throttle.write(data, length);
+  //enc_stream.write(data, length);
 }
 
 void fftResult(AudioFFTBase &fft) {

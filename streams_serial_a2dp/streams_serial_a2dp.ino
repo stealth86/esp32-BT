@@ -10,50 +10,37 @@
 
 #include "AudioTools.h"
 #include "AudioLibs/A2DPStream.h"
-
-//void callbackInit();
-//Stream* callbackNextStream(int offset);
+#include "AudioCodecs/CodecADPCM.h"
 
 #define RXD2 16
 #define TXD2 17
 
-//auto &serial = Serial2;
-//Throttle throttle(serial);
-//AudioSourceCallback source(callbackNextStream,callbackInit);
-//A2DPStream out;
-//CopyDecoder decoder;
-//AudioPlayer player(source, out, decoder);
-//StreamCopy copier(out,throttle);
-
-//void callbackInit() {
-  // make sure that the directory contains only mp3 files
-  //dir = SD.open("/TomWaits");
-//}
-
-//Stream* callbackNextStream(int offset) {
-//  return &throttle;
-//}
+auto &serial = Serial2;
+A2DPStream out;
+AudioInfo info(44100, 2, 16);
+ADPCMDecoder dec(AV_CODEC_ID_ADPCM_IMA_WAV);
+EncodedAudioStream dec_stream(&out, &dec);
+static int frame_size = 4096;
+StreamCopy copierIn(dec_stream, serial, frame_size);
 
 void setup() {
   Serial.begin(115200);
-  //AudioLogger::instance().begin(Serial, AudioLogger::Info);
-  // setup file
-  //SD.begin(chipSelect);
-  //audioFile = SD.open("/Music/Elephunk.mp3");
-  Serial2.begin(115200, SERIAL_8N1 ,RXD2,TXD2);
-  /*auto cfgA2DP = out.defaultConfig(TX_MODE);
+  AudioLogger::instance().begin(Serial, AudioLogger::Info);
+
+  copierIn.setCheckAvailable(true);
+  copierIn.setCheckAvailableForWrite(true);
+
+  Serial2.begin(1100000, SERIAL_8N1 ,RXD2,TXD2);
+  dec_stream.setFrameSize(frame_size);
+  dec_stream.begin(info);
+
+  auto cfgA2DP = out.defaultConfig(TX_MODE);
   cfgA2DP.name = "SRS-XB13";
-  //cfgA2DP.auto_reconnect = false;
+  cfgA2DP.auto_reconnect = false;
   out.begin(cfgA2DP);
   out.setVolume(0.5);
-  //copier.begin();
-  // setup player
-  player.begin();*/
 }
 
 void loop() {
-
-  Serial.print(Serial2.readString());
-  delay(500);
-  //player.copy();
+  copierIn.copy();
 }
