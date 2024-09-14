@@ -6,7 +6,9 @@
 #include "AudioTools.h"
 #include "AudioLibs/AudioRealFFT.h"
 #include "AudioLibs/A2DPStream.h"
-#include "AudioCodecs/CodecMP3LAME.h"
+//#include "AudioCodecs/CodecADPCM.h" // https://github.com/pschatzmann/adpcm
+#include "AudioCodecs/ContainerBinary.h"
+#include "AudioCodecs/CodecSBC.h"
 
 #define LED_PIN 5
 #define COLOR_ORDER RGB
@@ -37,14 +39,14 @@ uint16_t filenumber_read = 0;
 std::pair<float, float> input(0, MAX_MAGNITUDE);
 std::pair<float, float> palette_lookup(0, 255);
 
-auto &serial = Serial2;
-
 AudioInfo info(44100, 2, 16);
 A2DPStream a2dp_stream;
-MP3EncoderLAME enc;
-EncodedAudioStream enc_stream(&serial, &enc);
+auto &serial = Serial2;
+SBCEncoder enc;
+BinaryContainerEncoder bin_enc(&enc);
+EncodedAudioStream enc_stream(&serial, &bin_enc);
 Throttle throttle(enc_stream);
-static int frame_size = 512;
+static int frame_size = 4096;
 
 DEFINE_GRADIENT_PALETTE(blue_to_green_to_white_p){
   0, 255, 0, 0,   /* at index 0,   black(0,0,0) */
@@ -74,9 +76,9 @@ void setup() {
   a2dp_stream.begin(cfg);
 
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  a2dp_stream.sink().set_stream_reader(writeDataStream, false);
+  a2dp_stream.sink().set_stream_reader(writeDataStream,false);
   throttle.begin(info);
-  //enc_stream.setFrameSize(frame_size);
+  enc_stream.setFrameSize(frame_size);
   enc_stream.begin(info);
 }
 
@@ -140,7 +142,6 @@ tVal map_value(std::pair<tVal, tVal> a, std::pair<tVal, tVal> b, tVal inVal) {
 void writeDataStream(const uint8_t *data, uint32_t length) {
   fft.write(data, length);
   throttle.write(data, length);
-  //enc_stream.write(data, length);
 }
 
 void fftResult(AudioFFTBase &fft) {
