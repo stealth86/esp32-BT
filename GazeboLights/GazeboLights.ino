@@ -1,14 +1,13 @@
 /// @file    Fire2012WithPalette.ino
 /// @brief   Simple one-dimensional fire animation with a programmable color palette
-/// @example Fire2012WithPalette.ino
 
-#include <FastLED.h>
 #include "AudioTools.h"
 #include "AudioLibs/AudioRealFFT.h"
 #include "AudioLibs/A2DPStream.h"
 //#include "AudioCodecs/CodecADPCM.h" // https://github.com/pschatzmann/adpcm
 #include "AudioCodecs/ContainerBinary.h"
 #include "AudioCodecs/CodecSBC.h"
+#include "FastLED.h"
 
 #define LED_PIN 5
 #define COLOR_ORDER RGB
