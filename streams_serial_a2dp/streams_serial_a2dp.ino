@@ -14,8 +14,8 @@
 #include "AudioCodecs/CodecSBC.h"
 #include "AudioCodecs/ContainerBinary.h"
 
-#define RXD2 14
-#define TXD2 15
+#define RXD2 16
+#define TXD2 17
 
 auto &serial = Serial2;
 A2DPStream out;
@@ -23,14 +23,15 @@ AudioInfo info(44100, 2, 16);
 SBCDecoder dec;//(AV_CODEC_ID_ADPCM_IMA_WAV);
 BinaryContainerDecoder bin_dec(&dec);
 //FormatConverterStream conv(i2s);
-CsvOutput<int8_t> csvStream(Serial);
-EncodedAudioStream dec_stream(&bin_dec);
+CsvOutput<int16_t> csvStream(Serial);
+EncodedAudioOutput dec_stream(&csvStream,&bin_dec);
 static int frame_size = 4096;
 StreamCopy copierIn(dec_stream, serial, frame_size);
+//StreamCopy copier(csvStream, dec_stream);
 
 void setup() {
   Serial.begin(115200);
-  AudioLogger::instance().begin(Serial, AudioLogger::Info);
+  AudioLogger::instance().begin(Serial, AudioLogger::Warning);
 
   copierIn.setCheckAvailable(true);
   copierIn.setCheckAvailableForWrite(true);
@@ -47,8 +48,10 @@ void setup() {
   
   csvStream.begin(info);
   copierIn.begin();
+  //copier.begin();
 }
 
 void loop() {
   copierIn.copy();
+  //copier.copy();
 }

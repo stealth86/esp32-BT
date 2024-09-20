@@ -19,8 +19,8 @@
 #define NUM_LEDS 376
 #define MAX_MAGNITUDE 44100
 #define TOTAL_GRADS 3
-#define RXD2 16
-#define TXD2 17
+#define RXD2 14
+#define TXD2 15
 
 AudioRealFFT fft;
 CRGB source1[NUM_LEDS];
@@ -43,9 +43,9 @@ A2DPStream a2dp_stream;
 auto &serial = Serial2;
 SBCEncoder enc;
 BinaryContainerEncoder bin_enc(&enc);
-EncodedAudioStream enc_stream(&serial, &bin_enc);
+EncodedAudioOutput enc_stream(&serial, &bin_enc);
 Throttle throttle(enc_stream);
-static int frame_size = 4096;
+static int frame_size = 498;
 
 DEFINE_GRADIENT_PALETTE(blue_to_green_to_white_p){
   0, 255, 0, 0,   /* at index 0,   black(0,0,0) */
