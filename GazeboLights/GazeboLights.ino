@@ -45,7 +45,9 @@ SBCEncoder enc;
 BinaryContainerEncoder bin_enc(&enc);
 EncodedAudioOutput enc_stream(&serial, &bin_enc);
 Throttle throttle(enc_stream);
-static int frame_size = 498;
+CsvOutput<int16_t> csvStream(Serial,2);
+StreamCopy copier(throttle,a2dp_stream);
+static int frame_size = 1024;
 
 DEFINE_GRADIENT_PALETTE(blue_to_green_to_white_p){
   0, 255, 0, 0,   /* at index 0,   black(0,0,0) */
@@ -63,6 +65,8 @@ void setup() {
   auto cfg = a2dp_stream.defaultConfig(RX_MODE);
   cfg.name = "Gazebo LED";
 
+  csvStream.begin(info);
+
   auto tcfg = fft.defaultConfig();
   tcfg.length = 1024;
   tcfg.channels = 2;
@@ -75,14 +79,16 @@ void setup() {
   a2dp_stream.begin(cfg);
 
   FastLED.addLeds<CHIPSET, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  a2dp_stream.sink().set_stream_reader(writeDataStream,false);
+  //a2dp_stream.sink().set_stream_reader(writeDataStream,false);
   throttle.begin(info);
   enc_stream.setFrameSize(frame_size);
   enc_stream.begin(info);
+  copier.begin();
 }
 
 void loop() {
 
+  copier.copy();
   EVERY_N_SECONDS(5) {
     nextPattern();
   }

@@ -23,15 +23,15 @@ AudioInfo info(44100, 2, 16);
 SBCDecoder dec;//(AV_CODEC_ID_ADPCM_IMA_WAV);
 BinaryContainerDecoder bin_dec(&dec);
 //FormatConverterStream conv(i2s);
-CsvOutput<int16_t> csvStream(Serial);
+CsvOutput<int16_t> csvStream(Serial,2);
 EncodedAudioOutput dec_stream(&csvStream,&bin_dec);
-static int frame_size = 4096;
+static int frame_size = 1024;
 StreamCopy copierIn(dec_stream, serial, frame_size);
 //StreamCopy copier(csvStream, dec_stream);
 
 void setup() {
   Serial.begin(115200);
-  AudioLogger::instance().begin(Serial, AudioLogger::Warning);
+  AudioLogger::instance().begin(Serial, AudioLogger::Debug);
 
   copierIn.setCheckAvailable(true);
   copierIn.setCheckAvailableForWrite(true);
